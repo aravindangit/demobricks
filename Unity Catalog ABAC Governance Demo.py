@@ -344,14 +344,14 @@ print(f"✅ Catalog and Schema created!\nCatalog: {catalog_name}\nSchema: {schem
 # DBTITLE 1,Create Employees Table
 # MAGIC %sql
 # MAGIC -- Create EMPLOYEES table
-# MAGIC DROP TABLE IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.employees');
+# MAGIC DROP TABLE IF EXISTS retail_corp.customer_analytics.employees;
 # MAGIC
-# MAGIC CREATE TABLE IDENTIFIER(:catalog_name || '.' || :schema_name || '.employees') (
+# MAGIC CREATE TABLE retail_corp.customer_analytics.employees (
 # MAGIC   employee_id INT,
 # MAGIC   name STRING,
 # MAGIC   email STRING,
 # MAGIC   department STRING,
-# MAGIC   salary DECIMAL(10,2),
+# MAGIC   salary STRING COMMENT 'Salary - can be exact amount or masked range (Low/Medium/High)',
 # MAGIC   ssn STRING,
 # MAGIC   hire_date DATE
 # MAGIC )
@@ -359,17 +359,17 @@ print(f"✅ Catalog and Schema created!\nCatalog: {catalog_name}\nSchema: {schem
 # MAGIC TBLPROPERTIES ('sensitivity' = 'confidential', 'department_scoped' = 'true', 'data_owner' = 'hr', 'compliance' = 'sox');
 # MAGIC
 # MAGIC -- Insert sample data
-# MAGIC INSERT INTO IDENTIFIER(:catalog_name || '.' || :schema_name || '.employees') VALUES
-# MAGIC   (1001, 'Sarah Johnson', 'sarah.j@company.com', 'HR', 85000.00, '111-22-3333', '2020-01-15'),
-# MAGIC   (1002, 'Michael Chen', 'michael.c@company.com', 'Finance', 95000.00, '222-33-4444', '2019-05-20'),
-# MAGIC   (1003, 'Jennifer Davis', 'jennifer.d@company.com', 'Marketing', 78000.00, '333-44-5555', '2021-03-10'),
-# MAGIC   (1004, 'Robert Taylor', 'robert.t@company.com', 'HR', 72000.00, '444-55-6666', '2022-07-01'),
-# MAGIC   (1005, 'Linda Martinez', 'linda.m@company.com', 'Finance', 98000.00, '555-66-7777', '2018-11-15'),
-# MAGIC   (1006, 'James Wilson', 'james.w@company.com', 'Marketing', 81000.00, '666-77-8888', '2021-09-20'),
-# MAGIC   (1007, 'Patricia Brown', 'patricia.b@company.com', 'IT', 105000.00, '777-88-9999', '2017-04-12'),
-# MAGIC   (1008, 'David Lee', 'david.l@company.com', 'IT', 98000.00, '888-99-0000', '2020-08-25');
+# MAGIC INSERT INTO retail_corp.customer_analytics.employees VALUES
+# MAGIC   (1001, 'Sarah Johnson', 'sarah.j@company.com', 'HR', '85000.00', '111-22-3333', '2020-01-15'),
+# MAGIC   (1002, 'Michael Chen', 'michael.c@company.com', 'Finance', '95000.00', '222-33-4444', '2019-05-20'),
+# MAGIC   (1003, 'Jennifer Davis', 'jennifer.d@company.com', 'Marketing', '78000.00', '333-44-5555', '2021-03-10'),
+# MAGIC   (1004, 'Robert Taylor', 'robert.t@company.com', 'HR', '72000.00', '444-55-6666', '2022-07-01'),
+# MAGIC   (1005, 'Linda Martinez', 'linda.m@company.com', 'Finance', '98000.00', '555-66-7777', '2018-11-15'),
+# MAGIC   (1006, 'James Wilson', 'james.w@company.com', 'Marketing', '81000.00', '666-77-8888', '2021-09-20'),
+# MAGIC   (1007, 'Patricia Brown', 'patricia.b@company.com', 'IT', '105000.00', '777-88-9999', '2017-04-12'),
+# MAGIC   (1008, 'David Lee', 'david.l@company.com', 'IT', '98000.00', '888-99-0000', '2020-08-25');
 # MAGIC
-# MAGIC SELECT '✅ Employees table created with ' || COUNT(*) || ' records' as status FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.employees');
+# MAGIC SELECT '✅ Employees table created with ' || COUNT(*) || ' records' as status FROM retail_corp.customer_analytics.employees;
 
 # COMMAND ----------
 
@@ -1026,36 +1026,24 @@ print(f"   • No views needed - true ABAC on base tables!")
 # COMMAND ----------
 
 # DBTITLE 1,Create Row Filter Policy on Tables
-print("⚙️ Checking Row Filter Policy Support...\n")
+print("⚙️ Creating Row Filter Policy on Tables...\n")
 
-schema_name_full = f"{catalog_name}.{schema_name}"
-filter_function = f"{catalog_name}.{schema_name}.filter_by_region"
-
-print("📝 Row Filter Policy Status:")
-print("   ⚠️  Row filter policies have limited support in some UC environments")
-print("   ✅ Column masking policies ARE fully working!\n")
-
-print("🔧 Alternative: Query-Level Row Filtering\n")
-print("   For row-level filtering with the xref table, you can:")
-print("   1. Create a UDF that returns a WHERE clause condition")
-print("   2. Add WHERE clauses to your queries that call the UDF")
-print("\n   Example query with row filtering:")
-print("   ```sql")
-print(f"   SELECT * FROM {schema_name_full}.customers")
-print(f"   WHERE {filter_function}(region);")
-print("   ```\n")
-
-print("🎉 What's Working Perfectly:")
-print("   ✅ Policy 1-4: Column Masking (SSN, Email, Credit Card, Salary)")
-print("   ✅ Dynamic masking based on user_group_mapping table")
-print("   ✅ Single-user demo with group switching")
-print("   ✅ finance_team sees unmasked financial data")
-print("   ✅ data_analysts sees masked PII")
-print("   ✅ policy_owner sees everything")
-
-print("\n" + "="*70)
-print("✅ ABAC Column Masking Demo Ready!")
-print("="*70)
+try:
+    # Policy 5: Row Filter for Regional Access (tag-driven, schema-level)
+    spark.sql(f"""
+        CREATE OR REPLACE POLICY region_row_filter_policy
+        ON SCHEMA retail_corp.customer_analytics
+        COMMENT 'Context-aware row filtering - us_regional_analysts see only US data'
+        ROW FILTER retail_corp.customer_analytics.filter_by_region
+        TO `account users`
+        FOR TABLES
+        WHEN has_tag_value('sensitivity','high')
+        MATCH COLUMNS has_tag_value('sensitivity','high') AS u0
+        USING COLUMNS (u0)
+    """)
+    print("✓ Row filter policy created with tag-driven schema-level syntax.")
+except Exception as e:
+    print(f"⚠️  Row filter policy error: {str(e)[:200]}")
 
 # COMMAND ----------
 
@@ -1282,10 +1270,16 @@ print("="*70)
 # MAGIC -- SSN: XXX-XX-6789 | Email: a***e@email.com | Credit Card: ****1234 | Salary: High
 # MAGIC
 # MAGIC UPDATE retail_corp.customer_analytics.user_group_mapping 
-# MAGIC SET group_name = 'data_analysts' 
+# MAGIC -- SET group_name = 'data_analysts' 
+# MAGIC SET group_name = 'us_regional_analysts'
 # MAGIC WHERE user_email = current_user();
 # MAGIC
 # MAGIC SELECT 'Updated to data_analysts! Now RE-RUN the test query above (Cell 35).' as status;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from retail_corp.customer_analytics.employees
 
 # COMMAND ----------
 
@@ -1315,6 +1309,11 @@ print("="*70)
 # MAGIC WHERE user_email = current_user();
 # MAGIC
 # MAGIC SELECT 'Updated to us_regional_analysts! Now RE-RUN the test query above (Cell 35).' as status;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from retail_corp.customer_analytics.customers
 
 # COMMAND ----------
 
