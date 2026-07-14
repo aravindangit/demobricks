@@ -516,12 +516,12 @@ tags_config = [
     {
         "name": "geo_region",
         "description": "Geographic region classification for compliance",
-        "values": ["US", "EU", "APAC", "global"]
+        "values": ["us", "eu", "apac", "global"]
     },
     {
         "name": "department",
         "description": "Department-level data classification",
-        "values": ["HR", "Finance", "Marketing", "IT", "Sales"]
+        "values": ["hr", "finance", "marketing", "it", "sales"]
     }
 ]
 
