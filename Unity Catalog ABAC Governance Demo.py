@@ -3,6 +3,15 @@
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
+# Set up Databricks widgets for query parameter substitution
+dbutils.widgets.text("catalog_name", "retail_corp", "Catalog Name")
+dbutils.widgets.text("schema_name", "customer_analytics", "Schema Name")
+
+catalog_name = dbutils.widgets.get("catalog_name")
+schema_name = dbutils.widgets.get("schema_name")
+
+# COMMAND ----------
+
 # DBTITLE 1,Unity Catalog Governance Demo
 # MAGIC %md
 # MAGIC # 🎯 Unity Catalog ABAC Governance Demo
@@ -544,18 +553,11 @@ print("="*70)
 # COMMAND ----------
 
 # DBTITLE 1,Create Governed Tags
-# ✅ YES! Governed tags CAN be created via SQL code
-#
-# The previous cell contains the correct syntax:
-#   CREATE GOVERNED TAG <tag_name> 
-#     DESCRIPTION '<description>'
-#     VALUES ('<value1>', '<value2>', ...);
-#
-# Requirements:
-#   • METASTORE ADMIN permissions (or CREATE_CATALOG_TAG privilege)
-#   • Wait a moment if you see rate limit errors, then retry
-#
+# Confirms that governed tags can be created using SQL DDL in Databricks.
+# Requirements: METASTORE ADMIN or CREATE_CATALOG_TAG privilege.
 # Reference: https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-governed-tag/
+# Three creation methods: SQL DDL, Unity Catalog UI, Databricks CLI.
+# Handles rate limit and permission errors.
 
 print("✅ Governed Tags: SQL DDL Syntax Confirmed!")
 print("")
@@ -607,6 +609,10 @@ print("✓ Tagged email column as PII")
 spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN phone SET TAGS ('pii' = 'phone')")
 print("✓ Tagged phone column as PII")
 
+# Tag region column
+spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN region SET TAGS ('geo_region' = 'US')")
+print("✓ Tagged region column with geo_region = US")
+
 print("\n✓ Note: region column contains data values (US, EU, APAC) used by row-filter policies")
 print("✓ No tag needed - the policy will match on table sensitivity tag and use region column directly\n")
 
@@ -627,6 +633,9 @@ print("✓ Tagged table with sensitivity and domain")
 # Tag credit card column
 spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN credit_card_last4 SET TAGS ('pii' = 'credit_card')")
 print("✓ Tagged credit_card_last4 column as PII")
+
+spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN region SET TAGS ('geo_region' = 'US')")
+print("✓ Tagged region column with geo_region = US")
 
 print("\n✓ Note: region column contains data values used by row-filter policies\n")
 print("✅ Orders table tagging complete!")
@@ -1025,9 +1034,9 @@ try:
         ROW FILTER retail_corp.customer_analytics.filter_by_region
         TO `account users`
         FOR TABLES
-        WHEN has_tag_value('sensitivity','high')
-        MATCH COLUMNS has_tag_value('sensitivity','high') AS u0
-        USING COLUMNS (u0)
+        WHEN has_tag_value('geo_region','US')
+        MATCH COLUMNS has_tag_value('geo_region','US') AS us_region
+        USING COLUMNS (us_region)
     """)
     print("✓ Row filter policy created with tag-driven schema-level syntax.")
 except Exception as e:
@@ -1183,57 +1192,6 @@ except Exception as e:
 
 # COMMAND ----------
 
-# DBTITLE 1,✅ Test Query: See Your Current Access Level
-# MAGIC %sql
-# MAGIC -- 🔍 Dynamic ABAC Test Query - Driven by Lookup Table!
-# MAGIC -- The lookup table controls what you see - NO kernel restart needed!
-# MAGIC -- Just UPDATE the lookup table and re-run THIS query
-# MAGIC
-# MAGIC WITH current_access AS (
-# MAGIC   SELECT 
-# MAGIC     current_user() as my_email,
-# MAGIC     COALESCE(
-# MAGIC       (SELECT group_name FROM retail_corp.customer_analytics.user_group_mapping 
-# MAGIC        WHERE user_email = current_user() LIMIT 1),
-# MAGIC       'policy_owner'
-# MAGIC     ) as my_group
-# MAGIC ),
-# MAGIC masked_data AS (
-# MAGIC   SELECT 
-# MAGIC     c.customer_id,
-# MAGIC     c.name,
-# MAGIC     c.region,
-# MAGIC     c.customer_segment,
-# MAGIC     ca.my_group,
-# MAGIC     -- Dynamic SSN masking based on lookup table
-# MAGIC     CASE 
-# MAGIC       WHEN ca.my_group IN ('finance_team', 'policy_owner') THEN c.ssn
-# MAGIC       ELSE CONCAT('XXX-XX-', SUBSTRING(c.ssn, -4, 4))
-# MAGIC     END as ssn_display,
-# MAGIC     -- Dynamic Email masking based on lookup table
-# MAGIC     CASE 
-# MAGIC       WHEN ca.my_group = 'policy_owner' THEN c.email
-# MAGIC       ELSE CONCAT(SUBSTRING(c.email, 1, 1), '***', SUBSTRING(c.email, POSITION('@' IN c.email) - 1, 100))
-# MAGIC     END as email_display
-# MAGIC   FROM retail_corp.customer_analytics.customers c
-# MAGIC   CROSS JOIN current_access ca
-# MAGIC   -- Dynamic row filtering based on lookup table
-# MAGIC   WHERE ca.my_group != 'us_regional_analysts' OR c.region = 'US'
-# MAGIC )
-# MAGIC SELECT 
-# MAGIC   my_group as Current_Role,
-# MAGIC   customer_id,
-# MAGIC   name,
-# MAGIC   email_display as Email,
-# MAGIC   ssn_display as SSN,
-# MAGIC   customer_segment as Segment,
-# MAGIC   region as Region,
-# MAGIC   COUNT(*) OVER() as Total_Visible_Rows
-# MAGIC FROM masked_data
-# MAGIC ORDER BY region, customer_id;
-
-# COMMAND ----------
-
 # DBTITLE 1,🔄 Role Switching Section
 # MAGIC %md
 # MAGIC ---
@@ -1258,8 +1216,7 @@ except Exception as e:
 # MAGIC -- SSN: XXX-XX-6789 | Email: a***e@email.com | Credit Card: ****1234 | Salary: High
 # MAGIC
 # MAGIC UPDATE retail_corp.customer_analytics.user_group_mapping 
-# MAGIC -- SET group_name = 'data_analysts' 
-# MAGIC SET group_name = 'us_regional_analysts'
+# MAGIC SET group_name = 'data_analysts' 
 # MAGIC WHERE user_email = current_user();
 # MAGIC
 # MAGIC SELECT 'Updated to data_analysts! Now RE-RUN the test query above (Cell 35).' as status;
