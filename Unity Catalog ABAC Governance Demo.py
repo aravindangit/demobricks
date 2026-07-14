@@ -610,7 +610,7 @@ spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN phone SET TAGS ('pii' = 'phone
 print("✓ Tagged phone column as PII")
 
 # Tag region column
-spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN region SET TAGS ('geo_region' = 'US')")
+spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN region SET TAGS ('geo_region' = 'us')")
 print("✓ Tagged region column with geo_region = US")
 
 print("\n✓ Note: region column contains data values (US, EU, APAC) used by row-filter policies")
@@ -634,7 +634,7 @@ print("✓ Tagged table with sensitivity and domain")
 spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN credit_card_last4 SET TAGS ('pii' = 'credit_card')")
 print("✓ Tagged credit_card_last4 column as PII")
 
-spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN region SET TAGS ('geo_region' = 'US')")
+spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN region SET TAGS ('geo_region' = 'us')")
 print("✓ Tagged region column with geo_region = US")
 
 print("\n✓ Note: region column contains data values used by row-filter policies\n")
@@ -1034,9 +1034,9 @@ try:
         ROW FILTER retail_corp.customer_analytics.filter_by_region
         TO `account users`
         FOR TABLES
-        WHEN has_tag_value('geo_region','US')
-        MATCH COLUMNS has_tag_value('geo_region','US') AS us_region
-        USING COLUMNS (us_region)
+        --WHEN has_tag_value('geo_region','us')
+        MATCH COLUMNS has_tag_value('geo_region','us') AS u0
+        USING COLUMNS (u0)
     """)
     print("✓ Row filter policy created with tag-driven schema-level syntax.")
 except Exception as e:
