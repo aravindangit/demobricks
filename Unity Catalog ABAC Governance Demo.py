@@ -167,18 +167,6 @@
 # MAGIC 13. ✅ Validation query - check all components
 # MAGIC 14. ✅ Test query - see your current access level
 # MAGIC 15. ✅ Switch groups using UPDATE statement on user_group_mapping
-# MAGIC
-# MAGIC ---
-# MAGIC
-# MAGIC ### 🚨 Common Error: "Table or view not found: user_group_mapping"
-# MAGIC
-# MAGIC **Cause**: UDFs were created BEFORE the user_group_mapping table.
-# MAGIC
-# MAGIC **Solution**: 
-# MAGIC * ✅ **Fixed!** The notebook now creates the table BEFORE the UDFs.
-# MAGIC * If you encounter this, restart kernel and run cells in order above.
-# MAGIC
-# MAGIC ---
 
 # COMMAND ----------
 
