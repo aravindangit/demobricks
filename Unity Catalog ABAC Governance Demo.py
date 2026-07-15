@@ -3,15 +3,6 @@
 # [tool.databricks.environment]
 # environment_version = "5"
 # ///
-# Set up Databricks widgets for query parameter substitution
-dbutils.widgets.text("catalog_name", "retail_corp", "Catalog Name")
-dbutils.widgets.text("schema_name", "customer_analytics", "Schema Name")
-
-catalog_name = dbutils.widgets.get("catalog_name")
-schema_name = dbutils.widgets.get("schema_name")
-
-# COMMAND ----------
-
 # DBTITLE 1,Unity Catalog Governance Demo
 # MAGIC %md
 # MAGIC # 🎯 Unity Catalog ABAC Governance Demo
@@ -272,108 +263,121 @@ print(f"✅ Catalog and Schema created!\nCatalog: {catalog_name}\nSchema: {schem
 # COMMAND ----------
 
 # DBTITLE 1,Create Customers Table
-# MAGIC %sql
-# MAGIC -- Create CUSTOMERS table
-# MAGIC DROP TABLE IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.customers');
-# MAGIC
-# MAGIC CREATE TABLE IDENTIFIER(:catalog_name || '.' || :schema_name || '.customers') (
-# MAGIC   customer_id INT,
-# MAGIC   name STRING,
-# MAGIC   email STRING,
-# MAGIC   phone STRING,
-# MAGIC   ssn STRING,
-# MAGIC   region STRING,
-# MAGIC   customer_segment STRING,
-# MAGIC   created_date DATE
-# MAGIC )
-# MAGIC COMMENT 'Customer Master Data - Contains customer profiles with PII (email, phone, SSN) and regional segmentation. Protected by ABAC policies.'
-# MAGIC TBLPROPERTIES ('sensitivity' = 'high', 'data_owner' = 'customer_success', 'retention_days' = '2555');
-# MAGIC
-# MAGIC -- Insert sample data
-# MAGIC INSERT INTO IDENTIFIER(:catalog_name || '.' || :schema_name || '.customers') VALUES
-# MAGIC   (1, 'Alice Johnson', 'alice@email.com', '+1-555-0101', '123-45-6789', 'US', 'Premium', '2024-01-15'),
-# MAGIC   (2, 'Bob Schmidt', 'bob@email.de', '+49-555-0201', '234-56-7890', 'EU', 'Standard', '2024-01-20'),
-# MAGIC   (3, 'Carol Chen', 'carol@email.com', '+1-555-0301', '345-67-8901', 'US', 'Premium', '2024-02-01'),
-# MAGIC   (4, 'David Mueller', 'david@email.de', '+49-555-0401', '456-78-9012', 'EU', 'Basic', '2024-02-10'),
-# MAGIC   (5, 'Emma Wilson', 'emma@email.com', '+1-555-0501', '567-89-0123', 'US', 'Standard', '2024-02-15'),
-# MAGIC   (6, 'Frank Zhang', 'frank@email.cn', '+86-555-0601', '678-90-1234', 'APAC', 'Premium', '2024-03-01'),
-# MAGIC   (7, 'Grace Taylor', 'grace@email.com', '+1-555-0701', '789-01-2345', 'US', 'Premium', '2024-03-10'),
-# MAGIC   (8, 'Hans Bauer', 'hans@email.de', '+49-555-0801', '890-12-3456', 'EU', 'Standard', '2024-03-15');
-# MAGIC
-# MAGIC SELECT '✅ Customers table created with ' || COUNT(*) || ' records' as status FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.customers');
+# Create CUSTOMERS table
+spark.sql(f"DROP TABLE IF EXISTS {catalog_name}.{schema_name}.customers")
+
+spark.sql(f"""
+CREATE TABLE {catalog_name}.{schema_name}.customers (
+  customer_id INT,
+  name STRING,
+  email STRING,
+  phone STRING,
+  ssn STRING,
+  region STRING,
+  customer_segment STRING,
+  created_date DATE
+)
+COMMENT 'Customer Master Data - Contains customer profiles with PII (email, phone, SSN) and regional segmentation. Protected by ABAC policies.'
+TBLPROPERTIES ('sensitivity' = 'high', 'data_owner' = 'customer_success', 'retention_days' = '2555')
+""")
+
+# Insert sample data
+spark.sql(f"""
+INSERT INTO {catalog_name}.{schema_name}.customers VALUES
+  (1, 'Alice Johnson', 'alice@email.com', '+1-555-0101', '123-45-6789', 'US', 'Premium', '2024-01-15'),
+  (2, 'Bob Schmidt', 'bob@email.de', '+49-555-0201', '234-56-7890', 'EU', 'Standard', '2024-01-20'),
+  (3, 'Carol Chen', 'carol@email.com', '+1-555-0301', '345-67-8901', 'US', 'Premium', '2024-02-01'),
+  (4, 'David Mueller', 'david@email.de', '+49-555-0401', '456-78-9012', 'EU', 'Basic', '2024-02-10'),
+  (5, 'Emma Wilson', 'emma@email.com', '+1-555-0501', '567-89-0123', 'US', 'Standard', '2024-02-15'),
+  (6, 'Frank Zhang', 'frank@email.cn', '+86-555-0601', '678-90-1234', 'APAC', 'Premium', '2024-03-01'),
+  (7, 'Grace Taylor', 'grace@email.com', '+1-555-0701', '789-01-2345', 'US', 'Premium', '2024-03-10'),
+  (8, 'Hans Bauer', 'hans@email.de', '+49-555-0801', '890-12-3456', 'EU', 'Standard', '2024-03-15')
+""")
+
+count = spark.sql(f"SELECT COUNT(*) as cnt FROM {catalog_name}.{schema_name}.customers").collect()[0]['cnt']
+print(f"✅ Customers table created with {count} records")
 
 # COMMAND ----------
 
 # DBTITLE 1,Create Orders Table
-# MAGIC %sql
-# MAGIC -- Create ORDERS table
-# MAGIC DROP TABLE IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.orders');
-# MAGIC
-# MAGIC CREATE TABLE IDENTIFIER(:catalog_name || '.' || :schema_name || '.orders') (
-# MAGIC   order_id INT,
-# MAGIC   customer_id INT,
-# MAGIC   product STRING,
-# MAGIC   amount DECIMAL(10,2),
-# MAGIC   region STRING,
-# MAGIC   order_date DATE,
-# MAGIC   credit_card_last4 STRING
-# MAGIC )
-# MAGIC COMMENT 'Order Transactions - E-commerce sales data with payment information (credit card last 4). Used for revenue analytics and fraud detection.'
-# MAGIC TBLPROPERTIES ('sensitivity' = 'high', 'data_owner' = 'finance', 'retention_days' = '2555');
-# MAGIC
-# MAGIC -- Insert sample data
-# MAGIC INSERT INTO IDENTIFIER(:catalog_name || '.' || :schema_name || '.orders') VALUES
-# MAGIC   (101, 1, 'Laptop Pro', 1299.99, 'US', '2024-03-01', '1234'),
-# MAGIC   (102, 2, 'Wireless Mouse', 49.99, 'EU', '2024-03-02', '5678'),
-# MAGIC   (103, 3, 'Monitor 27in', 399.99, 'US', '2024-03-05', '9012'),
-# MAGIC   (104, 4, 'Keyboard Mech', 149.99, 'EU', '2024-03-07', '3456'),
-# MAGIC   (105, 5, 'USB-C Hub', 79.99, 'US', '2024-03-10', '7890'),
-# MAGIC   (106, 6, 'Webcam HD', 129.99, 'APAC', '2024-03-12', '2345'),
-# MAGIC   (107, 7, 'Laptop Stand', 59.99, 'US', '2024-03-15', '6789'),
-# MAGIC   (108, 8, 'Headphones Pro', 249.99, 'EU', '2024-03-18', '0123'),
-# MAGIC   (109, 1, 'External SSD', 189.99, 'US', '2024-03-20', '4567'),
-# MAGIC   (110, 3, 'Docking Station', 299.99, 'US', '2024-03-22', '8901');
-# MAGIC
-# MAGIC SELECT '✅ Orders table created with ' || COUNT(*) || ' records' as status FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.orders');
+# Drop ORDERS table if exists
+spark.sql(f"DROP TABLE IF EXISTS {catalog_name}.{schema_name}.orders")
+
+# Create ORDERS table
+spark.sql(f"""
+CREATE TABLE {catalog_name}.{schema_name}.orders (
+  order_id INT,
+  customer_id INT,
+  product STRING,
+  amount DECIMAL(10,2),
+  region STRING,
+  order_date DATE,
+  credit_card_last4 STRING
+)
+COMMENT 'Order Transactions - E-commerce sales data with payment information (credit card last 4). Used for revenue analytics and fraud detection.'
+TBLPROPERTIES ('sensitivity' = 'high', 'data_owner' = 'finance', 'retention_days' = '2555')
+""")
+
+# Insert sample data
+spark.sql(f"""
+INSERT INTO {catalog_name}.{schema_name}.orders VALUES
+  (101, 1, 'Laptop Pro', 1299.99, 'US', '2024-03-01', '1234'),
+  (102, 2, 'Wireless Mouse', 49.99, 'EU', '2024-03-02', '5678'),
+  (103, 3, 'Monitor 27in', 399.99, 'US', '2024-03-05', '9012'),
+  (104, 4, 'Keyboard Mech', 149.99, 'EU', '2024-03-07', '3456'),
+  (105, 5, 'USB-C Hub', 79.99, 'US', '2024-03-10', '7890'),
+  (106, 6, 'Webcam HD', 129.99, 'APAC', '2024-03-12', '2345'),
+  (107, 7, 'Laptop Stand', 59.99, 'US', '2024-03-15', '6789'),
+  (108, 8, 'Headphones Pro', 249.99, 'EU', '2024-03-18', '0123'),
+  (109, 1, 'External SSD', 189.99, 'US', '2024-03-20', '4567'),
+  (110, 3, 'Docking Station', 299.99, 'US', '2024-03-22', '8901')
+""")
+
+count = spark.sql(f"SELECT COUNT(*) as cnt FROM {catalog_name}.{schema_name}.orders").collect()[0]['cnt']
+print(f"✅ Orders table created with {count} records")
 
 # COMMAND ----------
 
 # DBTITLE 1,Create Employees Table
-# MAGIC %sql
-# MAGIC -- Create EMPLOYEES table
-# MAGIC DROP TABLE IF EXISTS retail_corp.customer_analytics.employees;
-# MAGIC
-# MAGIC CREATE TABLE retail_corp.customer_analytics.employees (
-# MAGIC   employee_id INT,
-# MAGIC   name STRING,
-# MAGIC   email STRING,
-# MAGIC   department STRING,
-# MAGIC   salary STRING COMMENT 'Salary - can be exact amount or masked range (Low/Medium/High)',
-# MAGIC   ssn STRING,
-# MAGIC   hire_date DATE
-# MAGIC )
-# MAGIC COMMENT 'Employee Records - HR data containing compensation (salary), PII (SSN, email), and department assignments. Strictly confidential.'
-# MAGIC TBLPROPERTIES ('sensitivity' = 'confidential', 'department_scoped' = 'true', 'data_owner' = 'hr', 'compliance' = 'sox');
-# MAGIC
-# MAGIC -- Insert sample data
-# MAGIC INSERT INTO retail_corp.customer_analytics.employees VALUES
-# MAGIC   (1001, 'Sarah Johnson', 'sarah.j@company.com', 'HR', '85000.00', '111-22-3333', '2020-01-15'),
-# MAGIC   (1002, 'Michael Chen', 'michael.c@company.com', 'Finance', '95000.00', '222-33-4444', '2019-05-20'),
-# MAGIC   (1003, 'Jennifer Davis', 'jennifer.d@company.com', 'Marketing', '78000.00', '333-44-5555', '2021-03-10'),
-# MAGIC   (1004, 'Robert Taylor', 'robert.t@company.com', 'HR', '72000.00', '444-55-6666', '2022-07-01'),
-# MAGIC   (1005, 'Linda Martinez', 'linda.m@company.com', 'Finance', '98000.00', '555-66-7777', '2018-11-15'),
-# MAGIC   (1006, 'James Wilson', 'james.w@company.com', 'Marketing', '81000.00', '666-77-8888', '2021-09-20'),
-# MAGIC   (1007, 'Patricia Brown', 'patricia.b@company.com', 'IT', '105000.00', '777-88-9999', '2017-04-12'),
-# MAGIC   (1008, 'David Lee', 'david.l@company.com', 'IT', '98000.00', '888-99-0000', '2020-08-25');
-# MAGIC
-# MAGIC SELECT '✅ Employees table created with ' || COUNT(*) || ' records' as status FROM retail_corp.customer_analytics.employees;
+# Create EMPLOYEES table
+spark.sql(f"DROP TABLE IF EXISTS {catalog_name}.{schema_name}.employees")
+
+spark.sql(f"""
+CREATE TABLE {catalog_name}.{schema_name}.employees (
+  employee_id INT,
+  name STRING,
+  email STRING,
+  department STRING,
+  salary STRING COMMENT 'Salary - can be exact amount or masked range (Low/Medium/High)',
+  ssn STRING,
+  hire_date DATE
+)
+COMMENT 'Employee Records - HR data containing compensation (salary), PII (SSN, email), and department assignments. Strictly confidential.'
+TBLPROPERTIES ('sensitivity' = 'confidential', 'department_scoped' = 'true', 'data_owner' = 'hr', 'compliance' = 'sox')
+""")
+
+# Insert sample data
+spark.sql(f"""
+INSERT INTO {catalog_name}.{schema_name}.employees VALUES
+  (1001, 'Sarah Johnson', 'sarah.j@company.com', 'HR', '85000.00', '111-22-3333', '2020-01-15'),
+  (1002, 'Michael Chen', 'michael.c@company.com', 'Finance', '95000.00', '222-33-4444', '2019-05-20'),
+  (1003, 'Jennifer Davis', 'jennifer.d@company.com', 'Marketing', '78000.00', '333-44-5555', '2021-03-10'),
+  (1004, 'Robert Taylor', 'robert.t@company.com', 'HR', '72000.00', '444-55-6666', '2022-07-01'),
+  (1005, 'Linda Martinez', 'linda.m@company.com', 'Finance', '98000.00', '555-66-7777', '2018-11-15'),
+  (1006, 'James Wilson', 'james.w@company.com', 'Marketing', '81000.00', '666-77-8888', '2021-09-20'),
+  (1007, 'Patricia Brown', 'patricia.b@company.com', 'IT', '105000.00', '777-88-9999', '2017-04-12'),
+  (1008, 'David Lee', 'david.l@company.com', 'IT', '98000.00', '888-99-0000', '2020-08-25')
+""")
+
+count = spark.sql(f"SELECT COUNT(*) as cnt FROM {catalog_name}.{schema_name}.employees").collect()[0]['cnt']
+print(f"✅ Employees table created with {count} records")
 
 # COMMAND ----------
 
 # DBTITLE 1,View Sample Data
-# MAGIC %sql
-# MAGIC -- Preview the customers table (showing sensitive data before ABAC protection)
-# MAGIC SELECT * FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.customers') LIMIT 3;
+# -- Preview the customers table (showing sensitive data before ABAC protection)
+df = spark.sql(f"SELECT * FROM {catalog_name}.{schema_name}.customers LIMIT 3")
+df.display()
 
 # COMMAND ----------
 
@@ -798,6 +802,70 @@ print(f"   • filter_by_region() checks this table")
 
 # COMMAND ----------
 
+# -- Context-Aware UDF: Mask SSN based on user's group
+spark.sql(f"""
+CREATE OR REPLACE FUNCTION {catalog_name}.{schema_name}.mask_ssn(ssn STRING)
+RETURNS STRING
+RETURN CASE
+  WHEN (SELECT group_name FROM {catalog_name}.{schema_name}.user_group_mapping 
+        WHERE user_email = current_user() LIMIT 1) IN ('finance_team', 'policy_owner') 
+    THEN ssn
+  ELSE CONCAT('XXX-XX-', SUBSTRING(ssn, -4, 4))
+END
+""")
+
+# -- Context-Aware UDF: Mask Email based on user's group
+spark.sql(f"""
+CREATE OR REPLACE FUNCTION {catalog_name}.{schema_name}.mask_email(email STRING)
+RETURNS STRING
+RETURN CASE
+  WHEN (SELECT group_name FROM {catalog_name}.{schema_name}.user_group_mapping 
+        WHERE user_email = current_user() LIMIT 1) = 'policy_owner'
+    THEN email
+  ELSE CONCAT(
+    SUBSTRING(email, 1, 1),
+    '***',
+    SUBSTRING(SPLIT(email, '@')[0], -1, 1),
+    '@',
+    SPLIT(email, '@')[1]
+  )
+END
+""")
+
+# -- Context-Aware UDF: Mask Credit Card based on user's group
+spark.sql(f"""
+CREATE OR REPLACE FUNCTION {catalog_name}.{schema_name}.mask_credit_card(cc STRING)
+RETURNS STRING
+RETURN CASE
+  WHEN (SELECT group_name FROM {catalog_name}.{schema_name}.user_group_mapping 
+        WHERE user_email = current_user() LIMIT 1) IN ('finance_team', 'policy_owner')
+    THEN cc
+  ELSE CONCAT('****', cc)
+END
+""")
+
+# -- Context-Aware UDF: Mask Salary based on user's group
+spark.sql(f"""
+CREATE OR REPLACE FUNCTION {catalog_name}.{schema_name}.mask_salary(salary DECIMAL(10,2))
+RETURNS STRING
+RETURN CASE
+  WHEN (SELECT group_name FROM {catalog_name}.{schema_name}.user_group_mapping 
+        WHERE user_email = current_user() LIMIT 1) IN ('finance_team', 'policy_owner')
+    THEN CAST(salary AS STRING)
+  ELSE 
+    CASE
+      WHEN salary < 50000 THEN 'Low Income'
+      WHEN salary < 75000 THEN 'Medium Income'
+      WHEN salary < 100000 THEN 'High Income'
+      ELSE 'Very High Income'
+    END
+END
+""")
+
+print("✅ Context-aware masking UDFs created (check user_group_mapping table)")
+
+# COMMAND ----------
+
 # DBTITLE 1,Create Row Filter UDFs
 # MAGIC %sql
 # MAGIC -- IMPORTANT: Row filter policies require functions that take the column as parameter AND return BOOLEAN
@@ -820,23 +888,20 @@ print(f"   • filter_by_region() checks this table")
 
 # COMMAND ----------
 
-# DBTITLE 1,Test UDFs
-# MAGIC %sql
-# MAGIC -- Test the UDFs
-# MAGIC SELECT
-# MAGIC   'Original' as type,
-# MAGIC   '123-45-6789' as ssn,
-# MAGIC   'alice@email.com' as email,
-# MAGIC   '1234' as credit_card,
-# MAGIC   '85000.00' as salary
-# MAGIC UNION ALL
-# MAGIC SELECT
-# MAGIC   'Masked' as type,
-# MAGIC   IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_ssn')('123-45-6789') as ssn,
-# MAGIC   IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_email')('alice@email.com') as email,
-# MAGIC   IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_credit_card')('1234') as credit_card,
-# MAGIC   IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_salary')(85000.00) as salary;
-# MAGIC
+spark.sql(f"""
+CREATE OR REPLACE FUNCTION {catalog_name}.{schema_name}.filter_by_region(region_value STRING)
+RETURNS BOOLEAN
+RETURN CASE
+  WHEN (SELECT group_name FROM {catalog_name}.{schema_name}.user_group_mapping 
+        WHERE user_email = current_user() LIMIT 1) = 'us_regional_analysts'
+    THEN region_value = 'US'
+  WHEN (SELECT group_name FROM {catalog_name}.{schema_name}.user_group_mapping 
+        WHERE user_email = current_user() LIMIT 1) = 'eu_regional_analysts'
+    THEN region_value = 'EU'
+  ELSE TRUE
+END
+""")
+print("✅ Context-aware row filter UDF created (takes region parameter, returns BOOLEAN)")
 
 # COMMAND ----------
 
@@ -1978,32 +2043,57 @@ print("\n" + "="*70)
 # COMMAND ----------
 
 # DBTITLE 1,Drop Policies
-# MAGIC %sql
-# MAGIC -- STEP 1: Drop all policies (they reference UDFs and catalog objects)
-# MAGIC -- Must run FIRST before dropping UDFs or tables
-# MAGIC -- Note: Databricks SQL doesn't support IF EXISTS for DROP POLICY, so we handle errors gracefully
-# MAGIC
-# MAGIC DROP POLICY ssn_protection_policy ON CATALOG IDENTIFIER(:catalog_name);
-# MAGIC DROP POLICY email_protection_policy ON CATALOG IDENTIFIER(:catalog_name);
-# MAGIC DROP POLICY credit_card_protection_policy ON CATALOG IDENTIFIER(:catalog_name);
-# MAGIC DROP POLICY salary_protection_policy ON CATALOG IDENTIFIER(:catalog_name);
-# MAGIC DROP POLICY regional_isolation_us ON CATALOG IDENTIFIER(:catalog_name);
-# MAGIC
-# MAGIC SELECT '✅ Policies dropped (or did not exist)' as status;
+# STEP 1: Drop all policies (they reference UDFs and catalog objects)
+# Must run FIRST before dropping UDFs or tables
+# Note: Databricks SQL doesn't support IF EXISTS for DROP POLICY, so we handle errors gracefully
+
+print("🧹 Dropping policies...\n")
+
+policies = [
+    ("ssn_protection_policy", f"{catalog_name}", "CATALOG"),
+    ("email_protection_policy", f"{catalog_name}", "CATALOG"),
+    ("credit_card_protection_policy", f"{catalog_name}", "CATALOG"),
+    ("salary_protection_policy", f"{catalog_name}", "CATALOG"),
+    ("regional_isolation_us", f"{catalog_name}.{schema_name}", "SCHEMA")
+]
+
+for policy_name, location, level in policies:
+    try:
+        spark.sql(f"DROP POLICY {policy_name} ON {level} {location}")
+        print(f"✅ Dropped: {policy_name}")
+    except Exception as e:
+        if "POLICY_NOT_FOUND" in str(e):
+            print(f"• {policy_name} - already dropped or doesn't exist")
+        else:
+            print(f"⚠️ {policy_name}: {str(e)[:100]}")
+
+print("\n✅ Policies dropped (or did not exist)")
 
 # COMMAND ----------
 
 # DBTITLE 1,Drop Governed Tags
-# MAGIC %sql
-# MAGIC -- STEP 4: Drop governed tags
-# MAGIC -- Run AFTER tables are dropped (tags were applied to columns)
-# MAGIC -- Note: Requires METASTORE ADMIN permissions
-# MAGIC DROP GOVERNED TAG  pii;
-# MAGIC DROP GOVERNED TAG  sensitivity;
-# MAGIC DROP GOVERNED TAG geo_region;
-# MAGIC DROP GOVERNED TAG department;
-# MAGIC
-# MAGIC SELECT '✅ Governed tags dropped' as status;
+# STEP 4: Drop governed tags
+# Run AFTER tables are dropped (tags were applied to columns)
+# Note: Requires METASTORE ADMIN permissions
+
+import time
+
+print("🧹 Dropping governed tags...\n")
+
+tags = ["pii", "sensitivity", "geo_region", "department"]
+
+for tag_name in tags:
+    try:
+        spark.sql(f"DROP GOVERNED TAG {tag_name}")
+        print(f"✅ Dropped: {tag_name}")
+    except Exception as e:
+        if "not found" in str(e).lower():
+            print(f"• {tag_name} - already dropped or doesn't exist")
+        else:
+            print(f"⚠️ {tag_name}: {str(e)[:100]}")
+    time.sleep(1) ## workaround
+
+print("\n✅ Governed tags dropped (or did not exist)")
 
 # COMMAND ----------
 
@@ -2154,36 +2244,47 @@ print("\n🔄 Your workspace is clean and ready for the next demo run.\n")
 # COMMAND ----------
 
 # DBTITLE 1,Drop Functions
-# MAGIC %sql
-# MAGIC -- STEP 2: Drop UDFs (policies were referencing them)
-# MAGIC -- Run AFTER dropping policies
-# MAGIC DROP FUNCTION IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_ssn');
-# MAGIC DROP FUNCTION IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_email');
-# MAGIC DROP FUNCTION IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_credit_card');
-# MAGIC DROP FUNCTION IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_salary');
-# MAGIC DROP FUNCTION IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.filter_us_only');
-# MAGIC DROP FUNCTION IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.filter_eu_only');
-# MAGIC
-# MAGIC SELECT '✅ Functions dropped' as status;
+# STEP 2: Drop UDFs (policies were referencing them)
+# Run AFTER dropping policies
+
+udf_names = [
+    "mask_ssn",
+    "mask_email",
+    "mask_credit_card",
+    "mask_salary",
+    "filter_us_only",
+    "filter_eu_only"
+]
+
+for udf in udf_names:
+    try:
+        spark.sql(f"DROP FUNCTION IF EXISTS {catalog_name}.{schema_name}.{udf}")
+        print(f"✅ Dropped function: {udf}")
+    except Exception as e:
+        if "not found" in str(e).lower():
+            print(f"• {udf} - already dropped or doesn't exist")
+        else:
+            print(f"⚠️ {udf}: {str(e)[:100]}")
+
+print("✅ Functions dropped")
 
 # COMMAND ----------
 
 # DBTITLE 1,Drop Tables
-# MAGIC %sql
-# MAGIC -- STEP 3: Drop tables (this removes tag applications from columns)
-# MAGIC -- Run BEFORE dropping governed tags
-# MAGIC DROP TABLE IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.customers');
-# MAGIC DROP TABLE IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.orders');
-# MAGIC DROP TABLE IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name || '.employees');
-# MAGIC
-# MAGIC SELECT '✅ Tables dropped' as status;
+# -- STEP 3: Drop tables (this removes tag applications from columns)
+# -- Run BEFORE dropping governed tags
+
+spark.sql(f"DROP TABLE IF EXISTS {catalog_name}.{schema_name}.customers")
+spark.sql(f"DROP TABLE IF EXISTS {catalog_name}.{schema_name}.orders")
+spark.sql(f"DROP TABLE IF EXISTS {catalog_name}.{schema_name}.employees")
+
+print("✅ Tables dropped")
 
 # COMMAND ----------
 
 # DBTITLE 1,Drop Schema and Catalog
-# MAGIC %sql
-# MAGIC -- STEP 5: Drop schema and catalog (CASCADE handles remaining dependencies)
-# MAGIC DROP SCHEMA IF EXISTS IDENTIFIER(:catalog_name || '.' || :schema_name) CASCADE;
-# MAGIC DROP CATALOG IF EXISTS IDENTIFIER(:catalog_name) CASCADE;
-# MAGIC
-# MAGIC SELECT '✅ Cleanup complete! All demo resources removed.' as status;
+# STEP 5: Drop schema and catalog (CASCADE handles remaining dependencies)
+spark.sql(f"DROP SCHEMA IF EXISTS {catalog_name}.{schema_name} CASCADE")
+spark.sql(f"DROP CATALOG IF EXISTS {catalog_name} CASCADE")
+
+print("✅ Cleanup complete! All demo resources removed.")
