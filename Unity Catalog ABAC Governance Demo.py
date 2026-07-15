@@ -503,6 +503,8 @@ df.display()
 # Create governed tags - handles existing tags gracefully
 # Note: Governed tags are account-level objects shared across all catalogs
 
+import time
+
 print("⚙️ Creating governed tags...\n")
 
 # Define tags with their allowed values
@@ -549,6 +551,7 @@ for tag in tags_config:
             print(f"✓ Governed tag '{tag_name}' already exists (skipping)")
         else:
             print(f"⚠️  Could not create '{tag_name}': {error_msg[:100]}")
+    time.sleep(2)
 
 print("\n" + "="*70)
 print("✅ Governed tags setup complete!")
@@ -743,65 +746,6 @@ print(f"   • filter_by_region() checks this table")
 
 # COMMAND ----------
 
-# DBTITLE 1,Create Masking UDFs
-# MAGIC %sql
-# MAGIC -- Context-Aware UDF: Mask SSN based on user's group
-# MAGIC CREATE OR REPLACE FUNCTION IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_ssn')(ssn STRING)
-# MAGIC RETURNS STRING
-# MAGIC RETURN CASE
-# MAGIC   -- Check user's group from mapping table
-# MAGIC   WHEN (SELECT group_name FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.user_group_mapping') 
-# MAGIC         WHERE user_email = current_user() LIMIT 1) IN ('finance_team', 'policy_owner') 
-# MAGIC     THEN ssn  -- finance_team sees full SSN
-# MAGIC   ELSE CONCAT('XXX-XX-', SUBSTRING(ssn, -4, 4))  -- Others see masked
-# MAGIC END;
-# MAGIC
-# MAGIC -- Context-Aware UDF: Mask Email based on user's group
-# MAGIC CREATE OR REPLACE FUNCTION IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_email')(email STRING)
-# MAGIC RETURNS STRING
-# MAGIC RETURN CASE
-# MAGIC   WHEN (SELECT group_name FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.user_group_mapping') 
-# MAGIC         WHERE user_email = current_user() LIMIT 1) = 'policy_owner'
-# MAGIC     THEN email  -- Policy owner sees everything
-# MAGIC   ELSE CONCAT(
-# MAGIC     SUBSTRING(email, 1, 1),
-# MAGIC     '***',
-# MAGIC     SUBSTRING(SPLIT(email, '@')[0], -1, 1),
-# MAGIC     '@',
-# MAGIC     SPLIT(email, '@')[1]
-# MAGIC   )  -- All others see masked email
-# MAGIC END;
-# MAGIC
-# MAGIC -- Context-Aware UDF: Mask Credit Card based on user's group
-# MAGIC CREATE OR REPLACE FUNCTION IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_credit_card')(cc STRING)
-# MAGIC RETURNS STRING
-# MAGIC RETURN CASE
-# MAGIC   WHEN (SELECT group_name FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.user_group_mapping') 
-# MAGIC         WHERE user_email = current_user() LIMIT 1) IN ('finance_team', 'policy_owner')
-# MAGIC     THEN cc  -- finance_team sees full credit card
-# MAGIC   ELSE CONCAT('****', cc)  -- Others see masked
-# MAGIC END;
-# MAGIC
-# MAGIC -- Context-Aware UDF: Mask Salary based on user's group
-# MAGIC CREATE OR REPLACE FUNCTION IDENTIFIER(:catalog_name || '.' || :schema_name || '.mask_salary')(salary DECIMAL(10,2))
-# MAGIC RETURNS STRING
-# MAGIC RETURN CASE
-# MAGIC   WHEN (SELECT group_name FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.user_group_mapping') 
-# MAGIC         WHERE user_email = current_user() LIMIT 1) IN ('finance_team', 'policy_owner')
-# MAGIC     THEN CAST(salary AS STRING)  -- finance_team sees exact salary
-# MAGIC   ELSE 
-# MAGIC     CASE
-# MAGIC       WHEN salary < 50000 THEN 'Low Income'
-# MAGIC       WHEN salary < 75000 THEN 'Medium Income'
-# MAGIC       WHEN salary < 100000 THEN 'High Income'
-# MAGIC       ELSE 'Very High Income'
-# MAGIC     END  -- Others see ranges
-# MAGIC END;
-# MAGIC
-# MAGIC SELECT '✅ Context-aware masking UDFs created (check user_group_mapping table)' as status;
-
-# COMMAND ----------
-
 # -- Context-Aware UDF: Mask SSN based on user's group
 spark.sql(f"""
 CREATE OR REPLACE FUNCTION {catalog_name}.{schema_name}.mask_ssn(ssn STRING)
@@ -866,28 +810,8 @@ print("✅ Context-aware masking UDFs created (check user_group_mapping table)")
 
 # COMMAND ----------
 
-# DBTITLE 1,Create Row Filter UDFs
-# MAGIC %sql
-# MAGIC -- IMPORTANT: Row filter policies require functions that take the column as parameter AND return BOOLEAN
-# MAGIC -- This is different from column mask UDFs
-# MAGIC
-# MAGIC CREATE OR REPLACE FUNCTION IDENTIFIER(:catalog_name || '.' || :schema_name || '.filter_by_region')(region_value STRING)
-# MAGIC RETURNS BOOLEAN
-# MAGIC RETURN CASE
-# MAGIC   -- Check user's group from mapping table at query time
-# MAGIC   WHEN (SELECT group_name FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.user_group_mapping') 
-# MAGIC         WHERE user_email = current_user() LIMIT 1) = 'us_regional_analysts'
-# MAGIC     THEN region_value = 'US'  -- US analysts see ONLY US data (returns TRUE for US rows)
-# MAGIC   WHEN (SELECT group_name FROM IDENTIFIER(:catalog_name || '.' || :schema_name || '.user_group_mapping') 
-# MAGIC         WHERE user_email = current_user() LIMIT 1) = 'eu_regional_analysts'
-# MAGIC     THEN region_value = 'EU'  -- EU analysts see ONLY EU data (returns TRUE for EU rows)
-# MAGIC   ELSE TRUE  -- All other groups see all regions (returns TRUE for all rows)
-# MAGIC END;
-# MAGIC
-# MAGIC SELECT '✅ Context-aware row filter UDF created (takes region parameter, returns BOOLEAN)' as status;
-
-# COMMAND ----------
-
+# -- IMPORTANT: Row filter policies require functions that take the column as parameter AND return BOOLEAN
+# -- This is different from column mask UDFs
 spark.sql(f"""
 CREATE OR REPLACE FUNCTION {catalog_name}.{schema_name}.filter_by_region(region_value STRING)
 RETURNS BOOLEAN
@@ -1099,7 +1023,7 @@ try:
         ROW FILTER retail_corp.customer_analytics.filter_by_region
         TO `account users`
         FOR TABLES
-        --WHEN has_tag_value('geo_region','us')
+        WHEN has_tag_value('sensitivity','high')
         MATCH COLUMNS has_tag_value('geo_region','us') AS u0
         USING COLUMNS (u0)
     """)
