@@ -1636,64 +1636,64 @@ except Exception as e:
 # COMMAND ----------
 
 # DBTITLE 1,Create Row Filter Policies
-print("⚙️ Creating Row Filter Policy for Regional Data Isolation...\n")
+# print("⚙️ Creating Row Filter Policy for Regional Data Isolation...\n")
 
-schema_name_full = f"{catalog_name}.{schema_name}"
-filter_function = f"{catalog_name}.{schema_name}.filter_us_only"
+# schema_name_full = f"{catalog_name}.{schema_name}"
+# filter_function = f"{catalog_name}.{schema_name}.filter_us_only"
 
-try:
-    # Create row filter policy on customers table for us_regional_analysts
-    spark.sql(f"""
-    CREATE OR REPLACE POLICY regional_isolation_us
-    ON TABLE {schema_name_full}.customers
-    COMMENT 'US regional analysts see only US customer data (GDPR compliance)'
-    ROW FILTER {filter_function}
-    TO us_regional_analysts
-    FOR TABLES
-    MATCH COLUMNS column_name_in('region') AS region_col
-    USING COLUMNS (region_col)
-    """)
-    print("✓ Policy 5: Regional Row Filter → us_regional_analysts")
-    print("             (Filters to US customers only)")
-    print("\n✅ Row filter policy created!")
-    print(f"\n🌍 Regional Data Isolation:")
-    print(f"   • us_regional_analysts: See ONLY US customers (4 customers)")
-    print(f"   • data_analysts: See ALL customers (8 customers)")
-    print(f"   • finance_team: See ALL customers (8 customers)")
-    print(f"   • Policy owner: See ALL customers (8 customers)")
-except Exception as e:
-    error_msg = str(e)
-    print(f"⚠️  Row filter policy error: {error_msg[:300]}")
-    if "PARSE_SYNTAX_ERROR" in error_msg or "INVALID_PARAMETER" in error_msg:
-        print("\n📝 Note: Row filter policies have specific syntax requirements.")
-        print("   Attempting alternative approach...\n")
+# try:
+#     # Create row filter policy on customers table for us_regional_analysts
+#     spark.sql(f"""
+#     CREATE OR REPLACE POLICY regional_isolation_us
+#     ON TABLE {schema_name_full}.customers
+#     COMMENT 'US regional analysts see only US customer data (GDPR compliance)'
+#     ROW FILTER {filter_function}
+#     TO us_regional_analysts
+#     FOR TABLES
+#     MATCH COLUMNS column_name_in('region') AS region_col
+#     USING COLUMNS (region_col)
+#     """)
+#     print("✓ Policy 5: Regional Row Filter → us_regional_analysts")
+#     print("             (Filters to US customers only)")
+#     print("\n✅ Row filter policy created!")
+#     print(f"\n🌍 Regional Data Isolation:")
+#     print(f"   • us_regional_analysts: See ONLY US customers (4 customers)")
+#     print(f"   • data_analysts: See ALL customers (8 customers)")
+#     print(f"   • finance_team: See ALL customers (8 customers)")
+#     print(f"   • Policy owner: See ALL customers (8 customers)")
+# except Exception as e:
+#     error_msg = str(e)
+#     print(f"⚠️  Row filter policy error: {error_msg[:300]}")
+#     if "PARSE_SYNTAX_ERROR" in error_msg or "INVALID_PARAMETER" in error_msg:
+#         print("\n📝 Note: Row filter policies have specific syntax requirements.")
+#         print("   Attempting alternative approach...\n")
         
-        # Try simpler syntax without MATCH COLUMNS
-        try:
-            spark.sql(f"""
-            CREATE OR REPLACE POLICY regional_isolation_us
-            ON TABLE {schema_name_full}.customers
-            COMMENT 'US regional analysts see only US customer data'
-            ROW FILTER {filter_function}
-            TO us_regional_analysts
-            FOR TABLES
-            """)
-            print("✓ Policy 5: Regional Row Filter → us_regional_analysts (simplified syntax)")
-            print("\n✅ Row filter policy created!")
-        except Exception as e2:
-            print(f"⚠️  Alternative syntax also failed: {str(e2)[:200]}")
-            print("\n🔧 Workaround: Create filtered VIEW instead:")
-            try:
-                spark.sql(f"""
-                CREATE OR REPLACE VIEW {schema_name_full}.customers_us_view AS
-                SELECT * FROM {schema_name_full}.customers WHERE region = 'US'
-                """)
-                print("✓ Created VIEW: customers_us_view (US customers only)")
-                print("   Grant SELECT on this view to us_regional_analysts")
-            except Exception as e3:
-                print(f"⚠️  View creation: {str(e3)[:100]}")
+#         # Try simpler syntax without MATCH COLUMNS
+#         try:
+#             spark.sql(f"""
+#             CREATE OR REPLACE POLICY regional_isolation_us
+#             ON TABLE {schema_name_full}.customers
+#             COMMENT 'US regional analysts see only US customer data'
+#             ROW FILTER {filter_function}
+#             TO us_regional_analysts
+#             FOR TABLES
+#             """)
+#             print("✓ Policy 5: Regional Row Filter → us_regional_analysts (simplified syntax)")
+#             print("\n✅ Row filter policy created!")
+#         except Exception as e2:
+#             print(f"⚠️  Alternative syntax also failed: {str(e2)[:200]}")
+#             print("\n🔧 Workaround: Create filtered VIEW instead:")
+#             try:
+#                 spark.sql(f"""
+#                 CREATE OR REPLACE VIEW {schema_name_full}.customers_us_view AS
+#                 SELECT * FROM {schema_name_full}.customers WHERE region = 'US'
+#                 """)
+#                 print("✓ Created VIEW: customers_us_view (US customers only)")
+#                 print("   Grant SELECT on this view to us_regional_analysts")
+#             except Exception as e3:
+#                 print(f"⚠️  View creation: {str(e3)[:100]}")
 
-print("\n" + "="*70)
+# print("\n" + "="*70)
 
 # COMMAND ----------
 
