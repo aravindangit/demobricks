@@ -903,6 +903,24 @@ try:
 except Exception as e:
     print(f"⚠️  SSN policy: {str(e)[:200]}")
 
+
+try:
+    # Policy 1: Mask phone columns (UDF checks user's group internally)
+    spark.sql(f"""
+    CREATE OR REPLACE POLICY phone_mask_policy
+    ON CATALOG {catalog_name}
+    COMMENT 'Context-aware email masking - all groups masked except owner'
+    COLUMN MASK {masking_functions}.mask_phone
+    TO `account users`
+    FOR TABLES
+    MATCH COLUMNS has_tag_value('pii', 'phone') AS phone_col
+    ON COLUMN phone_col
+    """)
+    print("✓ Policy 1: Phone Masking → Applies to all users")
+    print("             (UDF checks: all groups see masked email)")
+except Exception as e:
+    print(f"⚠️  Phone policy: {str(e)[:200]}")
+
 try:
     # Policy 2: Mask Email columns
     spark.sql(f"""
@@ -1068,7 +1086,6 @@ except Exception as e:
 # MAGIC SET group_name = 'policy_owner' 
 # MAGIC WHERE user_email = current_user();
 # MAGIC ```
-# MAGIC **Then:** Restart Python kernel → Run query cells below
 # MAGIC
 # MAGIC ---
 # MAGIC
@@ -1086,7 +1103,6 @@ except Exception as e:
 # MAGIC SET group_name = 'data_analysts' 
 # MAGIC WHERE user_email = current_user();
 # MAGIC ```
-# MAGIC **Then:** Restart Python kernel → Run query cells below
 # MAGIC
 # MAGIC ---
 # MAGIC
@@ -1104,7 +1120,6 @@ except Exception as e:
 # MAGIC SET group_name = 'finance_team' 
 # MAGIC WHERE user_email = current_user();
 # MAGIC ```
-# MAGIC **Then:** Restart Python kernel → Run query cells below
 # MAGIC
 # MAGIC ---
 # MAGIC
@@ -1122,16 +1137,8 @@ except Exception as e:
 # MAGIC SET group_name = 'us_regional_analysts' 
 # MAGIC WHERE user_email = current_user();
 # MAGIC ```
-# MAGIC **Then:** Restart Python kernel → Run query cells below
 # MAGIC
 # MAGIC ---
-# MAGIC
-# MAGIC #### **⚠️ CRITICAL: After Each UPDATE**
-# MAGIC 1. ✅ Restart Python kernel (Compute dropdown → Restart Python)
-# MAGIC 2. ✅ Re-run query cells below
-# MAGIC 3. ✅ Compare results!
-# MAGIC
-# MAGIC **Pro tip:** Take screenshots of each scenario to show side-by-side comparison!
 
 # COMMAND ----------
 
@@ -1141,7 +1148,7 @@ except Exception as e:
 # MAGIC
 # MAGIC ## 🔄 Role Switching: Test Different Access Levels
 # MAGIC
-# MAGIC **The lookup table drives everything! Just UPDATE and re-run the test query - NO kernel restart needed!**
+# MAGIC **The lookup table drives everything! Just UPDATE and re-run the test query!**
 # MAGIC
 # MAGIC ### ✨ How It Works:
 # MAGIC 1. **Run one of the UPDATE cells below** to change your role in the lookup table
@@ -1153,50 +1160,53 @@ except Exception as e:
 # COMMAND ----------
 
 # DBTITLE 1,1️⃣ Switch to Data Analysts
-# MAGIC %sql
-# MAGIC -- 👥 Test as DATA ANALYSTS
-# MAGIC -- What they see: All 8 customers, ALL PII masked
-# MAGIC -- SSN: XXX-XX-6789 | Email: a***e@email.com | Credit Card: ****1234 | Salary: High
-# MAGIC
-# MAGIC UPDATE retail_corp.customer_analytics.user_group_mapping 
-# MAGIC SET group_name = 'data_analysts' 
-# MAGIC WHERE user_email = current_user();
-# MAGIC
-# MAGIC SELECT 'Updated to data_analysts! Now RE-RUN the test query above (Cell 35).' as status;
+# 👥 Test as DATA ANALYSTS
+# What they see: All 8 customers, ALL PII masked
+# SSN: XXX-XX-6789 | Email: a***e@email.com | Credit Card: ****1234 | Salary: High
+
+spark.sql("""
+UPDATE retail_corp.customer_analytics.user_group_mapping 
+SET group_name = 'data_analysts' 
+WHERE user_email = current_user()
+""")
+
+print("Updated to data_analysts! Now RE-RUN the test query")
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from retail_corp.customer_analytics.employees
+# MAGIC select * from retail_corp.customer_analytics.customers
 
 # COMMAND ----------
 
 # DBTITLE 1,2️⃣ Switch to Finance Team
-# MAGIC %sql
-# MAGIC -- 💰 Test as FINANCE TEAM
-# MAGIC -- What they see: All 8 customers, Financial PII UNMASKED
-# MAGIC -- SSN: 123-45-6789 (full) | Email: a***e@email.com (masked) | Credit Card: 1234 (full) | Salary: $85,000.00 (exact)
-# MAGIC
-# MAGIC UPDATE retail_corp.customer_analytics.user_group_mapping 
-# MAGIC SET group_name = 'finance_team' 
-# MAGIC WHERE user_email = current_user();
-# MAGIC
-# MAGIC SELECT 'Updated to finance_team! Now RE-RUN the test query above (Cell 35).' as status;
+# 💰 Test as FINANCE TEAM
+# What they see: All 8 customers, Financial PII UNMASKED
+# SSN: 123-45-6789 (full) | Email: a***e@email.com (masked) | Credit Card: 1234 (full) | Salary: High/Low
+
+spark.sql("""
+UPDATE retail_corp.customer_analytics.user_group_mapping 
+SET group_name = 'finance_team' 
+WHERE user_email = current_user()
+""")
+
+print("Updated to finance_team! Now RE-RUN the test query ")
 
 # COMMAND ----------
 
 # DBTITLE 1,3️⃣ Switch to US Regional Analysts
-# MAGIC %sql
-# MAGIC -- 🇺🇸 Test as US REGIONAL ANALYSTS (Row Filtering!)
-# MAGIC -- What they see: ONLY 4 US customers, ALL PII masked
-# MAGIC -- SSN: XXX-XX-6789 | Email: a***e@email.com | Credit Card: ****1234 | Salary: High
-# MAGIC -- ⚠️ Notice: EU and APAC customers disappear!
-# MAGIC
-# MAGIC UPDATE retail_corp.customer_analytics.user_group_mapping 
-# MAGIC SET group_name = 'us_regional_analysts' 
-# MAGIC WHERE user_email = current_user();
-# MAGIC
-# MAGIC SELECT 'Updated to us_regional_analysts! Now RE-RUN the test query above (Cell 35).' as status;
+# 🇺🇸 Test as US REGIONAL ANALYSTS (Row Filtering!)
+# What they see: ONLY 4 US customers, ALL PII masked
+# SSN: XXX-XX-6789 | Email: a***e@email.com | Credit Card: ****1234 | Salary: High
+# ⚠️ Notice: EU and APAC customers disappear!
+
+spark.sql("""
+UPDATE retail_corp.customer_analytics.user_group_mapping 
+SET group_name = 'us_regional_analysts' 
+WHERE user_email = current_user()
+""")
+
+print("Updated to us_regional_analysts! Now RE-RUN the test query")
 
 # COMMAND ----------
 
@@ -1206,16 +1216,17 @@ except Exception as e:
 # COMMAND ----------
 
 # DBTITLE 1,4️⃣ Reset to Policy Owner
-# MAGIC %sql
-# MAGIC -- 🔑 Reset to POLICY OWNER (Full Access)
-# MAGIC -- What they see: All 8 customers, ALL data UNMASKED
-# MAGIC -- SSN: 123-45-6789 | Email: alice@email.com | Credit Card: 1234 | Salary: $85,000.00
-# MAGIC
-# MAGIC UPDATE retail_corp.customer_analytics.user_group_mapping 
-# MAGIC SET group_name = 'policy_owner' 
-# MAGIC WHERE user_email = current_user();
-# MAGIC
-# MAGIC SELECT 'Reset to policy_owner! Now RE-RUN the test query above (Cell 35).' as status;
+# 🔑 Reset to POLICY OWNER (Full Access)
+# What they see: All 8 customers, ALL data UNMASKED
+# SSN: 123-45-6789 | Email: alice@email.com | Credit Card: 1234 | Salary: $85,000.00
+
+spark.sql("""
+UPDATE retail_corp.customer_analytics.user_group_mapping 
+SET group_name = 'policy_owner' 
+WHERE user_email = current_user()
+""")
+
+print("Reset to policy_owner! Now RE-RUN the test query")
 
 # COMMAND ----------
 
@@ -1230,13 +1241,14 @@ except Exception as e:
 # MAGIC | **finance_team** | `123-45-6789` | `a***e@email.com` | `1234` | `$85,000.00` | 8 (all regions) | Finance needs full financial data |
 # MAGIC | **us_regional_analysts** | `XXX-XX-6789` | `a***e@email.com` | `****1234` | `High` | **4 (US only)** | GDPR compliance |
 # MAGIC
-# MAGIC ⚡ **How to Test:**
-# MAGIC 1. Run one of the UPDATE cells above (37-40)
-# MAGIC 2. **Re-run the test query (Cell 35)** - that's it!
-# MAGIC 3. See different data **instantly**!
-# MAGIC 4. Compare with the table above
+# MAGIC ---
 # MAGIC
-# MAGIC ✨ **No kernel restart needed!** The lookup table drives everything.
+# MAGIC ### ✨ Key Achievement
+# MAGIC
+# MAGIC ✅ **Same SQL query** · ✅ **Different results per role** 
+# MAGIC
+# MAGIC **The lookup table drives EVERYTHING!**
+# MAGIC
 
 # COMMAND ----------
 
