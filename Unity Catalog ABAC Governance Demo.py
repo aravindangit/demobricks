@@ -748,6 +748,18 @@ RETURN CASE
 END
 """)
 
+# -- Context-Aware UDF: Mask Phone based on user's group
+spark.sql(f"""
+CREATE OR REPLACE FUNCTION {catalog_name}.{schema_name}.mask_phone(phone STRING)
+RETURNS STRING
+RETURN CASE
+  WHEN (SELECT group_name FROM {catalog_name}.{schema_name}.user_group_mapping 
+        WHERE user_email = current_user() LIMIT 1) = 'policy_owner'
+    THEN phone
+  ELSE CONCAT('(***) ***-', SUBSTRING(phone, -4, 4))
+END
+""")
+
 print("✅ Context-aware masking UDFs created (check user_group_mapping table)")
 
 # COMMAND ----------
