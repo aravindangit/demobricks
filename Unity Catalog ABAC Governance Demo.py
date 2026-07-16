@@ -37,7 +37,6 @@
 # MAGIC ![abac_1784180743175.png](./abac_1784180743175.png "abac_1784180743175.png")
 # MAGIC ---
 # MAGIC
-# MAGIC ## 📋 Demo Flow (30 minutes)
 # MAGIC
 # MAGIC ```
 # MAGIC ┌─────────────────────────────────────────────────────────────────┐
@@ -64,14 +63,6 @@
 # MAGIC - Enforce **regional data access** (US vs EU customers)
 # MAGIC - Control **sensitive financial data** (credit card, salary)
 # MAGIC - Implement **department-level isolation** (HR, Finance, Marketing)
-# MAGIC
-# MAGIC | Part | Duration | What You'll See |
-# MAGIC |------|----------|------------------|
-# MAGIC | **1. Setup** | 5 min | Create retail tables (customers, orders, employees) |
-# MAGIC | **2. The Problem** | 3 min | Why traditional RBAC doesn't scale |
-# MAGIC | **3. ABAC Setup** | 10 min | Tags → UDFs → Groups → Policies |
-# MAGIC | **4. Live Demo** | 10 min | Column masking + row filtering in action |
-# MAGIC | **5. Cleanup** | 2 min | Remove all resources (fully rerunnable) |
 # MAGIC
 # MAGIC ---
 # MAGIC
