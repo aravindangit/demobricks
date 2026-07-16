@@ -127,61 +127,6 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,⚡ Execution Order Guide
-# MAGIC %md
-# MAGIC ## ⚡ Notebook Execution Order (CRITICAL!)
-# MAGIC
-# MAGIC **To run this notebook successfully, execute cells in this order:**
-# MAGIC
-# MAGIC ### **Phase 1: Setup** (Cells 1-11)
-# MAGIC 1. ✅ Configuration variables
-# MAGIC 2. ✅ Create catalog & schema
-# MAGIC 3. ✅ Create sample tables (customers, orders, employees)
-# MAGIC 4. ✅ View sample data
-# MAGIC 5. ✅ Create governed tags
-# MAGIC 6. ✅ Apply tags to tables and columns
-# MAGIC
-# MAGIC ### **Phase 2: ABAC Core Components** (Cells 22-26) ⚠️ ORDER MATTERS!
-# MAGIC 7. ✅ **Create user_group_mapping table FIRST** (Cell 22)
-# MAGIC    - This table MUST exist before UDFs!
-# MAGIC    - Maps users to groups: policy_owner, data_analysts, finance_team, us_regional_analysts
-# MAGIC
-# MAGIC 8. ✅ **Create UDFs** (Cell 24-25)
-# MAGIC    - mask_ssn(), mask_email(), mask_credit_card(), mask_salary()
-# MAGIC    - filter_by_region()
-# MAGIC    - All UDFs query the user_group_mapping table
-# MAGIC
-# MAGIC 9. ✅ **Test UDFs** (Cell 26)
-# MAGIC    - Verify masking functions work correctly
-# MAGIC
-# MAGIC ### **Phase 3: Apply Policies** (Cells 30-33)
-# MAGIC 10. ✅ Create workspace groups (data_analysts, finance_team, us_regional_analysts)
-# MAGIC 11. ✅ Create column mask policies on catalog
-# MAGIC 12. ✅ (Row filter policies - limited support, use query-level WHERE instead)
-# MAGIC
-# MAGIC ### **Phase 4: Demo & Test** (Cells 34-36)
-# MAGIC 13. ✅ Validation query - check all components
-# MAGIC 14. ✅ Test query - see your current access level
-# MAGIC 15. ✅ Switch groups using UPDATE statement on user_group_mapping
-
-# COMMAND ----------
-
-# DBTITLE 1,Query Parameters Info
-# MAGIC %md
-# MAGIC ### 📌 Query Parameters Setup
-# MAGIC
-# MAGIC **Important**: This notebook uses query parameters (widgets) for SQL variable substitution.
-# MAGIC
-# MAGIC The following parameters are automatically configured:
-# MAGIC - **`catalog_name`**: `retail_corp` (Main retail data catalog)
-# MAGIC - **`schema_name`**: `customer_analytics` (Customer & sales analytics schema)
-# MAGIC
-# MAGIC These parameters allow SQL cells to use `IDENTIFIER(:catalog_name || '.' || :schema_name || '.table')` syntax for dynamic table references.
-# MAGIC
-# MAGIC **Note**: The parameters are visible at the top of the notebook. You can modify them if needed before running.
-
-# COMMAND ----------
-
 # DBTITLE 1,Configuration Variables
 # Configuration - UPDATE THESE FOR YOUR WORKSPACE
 # Use meaningful names that reflect your retail business context
