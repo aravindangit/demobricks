@@ -2074,6 +2074,7 @@ print("\n🔄 Your workspace is clean and ready for the next demo run.\n")
 udf_names = [
     "mask_ssn",
     "mask_email",
+    "mask_phone",
     "mask_credit_card",
     "mask_salary",
     "filter_us_only",
