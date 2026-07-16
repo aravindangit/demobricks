@@ -41,19 +41,20 @@
 # MAGIC
 # MAGIC
 # MAGIC ```
-# MAGIC ┌─────────────────────────────────────────────────────────────────┐
-# MAGIC │                    GOVERNANCE EVOLUTION                          │
-# MAGIC ├─────────────────────────────────────────────────────────────────┤
-# MAGIC │                                                                  │
-# MAGIC │  RBAC (Role-Based)              →        ABAC (Attribute-Based) │
-# MAGIC │  ═════════════════                       ═══════════════════════ │
-# MAGIC │                                                                  │
-# MAGIC │  ❌ Manual grants per table             ✅ Policy once, apply everywhere │
-# MAGIC │  ❌ Rigid role assignments              ✅ Dynamic tag-based access │
-# MAGIC │  ❌ Difficult to audit                  ✅ Centralized governance │
-# MAGIC │  ❌ Doesn't scale                       ✅ Scales automatically │
-# MAGIC │                                                                  │
-# MAGIC └─────────────────────────────────────────────────────────────────┘
+# MAGIC
+# MAGIC +-------------------------------------------------------------------+
+# MAGIC |                    GOVERNANCE EVOLUTION                           |
+# MAGIC +-------------------------------------------------------------------+
+# MAGIC |                                                                   |
+# MAGIC |  RBAC (Role-Based)         →        ABAC (Attribute-Based)        |
+# MAGIC |  =================                  =======================       |
+# MAGIC |                                                                   |
+# MAGIC |  ❌ Manual grants per table      ✅ Policy once, apply everywhere|
+# MAGIC |  ❌ Rigid role assignments       ✅ Dynamic tag-based access     |
+# MAGIC |  ❌ Difficult to audit           ✅ Centralized governance       |
+# MAGIC |  ❌ Doesn't scale                ✅ Scales automatically         |
+# MAGIC |                                                                   |
+# MAGIC +-------------------------------------------------------------------+
 # MAGIC ```
 # MAGIC
 # MAGIC ---
