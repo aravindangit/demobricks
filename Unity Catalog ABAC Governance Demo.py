@@ -254,25 +254,25 @@ CREATE TABLE {catalog_name}.{schema_name}.orders (
   amount DECIMAL(10,2),
   region STRING,
   order_date DATE,
-  credit_card_last4 STRING
+  credit_card_number STRING
 )
-COMMENT 'Order Transactions - E-commerce sales data with payment information (credit card last 4). Used for revenue analytics and fraud detection.'
+COMMENT 'Order Transactions - E-commerce sales data with payment information (credit card number, masked to show last 4 digits). Used for revenue analytics and fraud detection.'
 TBLPROPERTIES ('sensitivity' = 'high', 'data_owner' = 'finance', 'retention_days' = '2555')
 """)
 
-# Insert sample data
+# Insert sample data with realistic masked credit card numbers (showing last 4 digits)
 spark.sql(f"""
 INSERT INTO {catalog_name}.{schema_name}.orders VALUES
-  (101, 1, 'Laptop Pro', 1299.99, 'US', '2024-03-01', '1234'),
-  (102, 2, 'Wireless Mouse', 49.99, 'EU', '2024-03-02', '5678'),
-  (103, 3, 'Monitor 27in', 399.99, 'US', '2024-03-05', '9012'),
-  (104, 4, 'Keyboard Mech', 149.99, 'EU', '2024-03-07', '3456'),
-  (105, 5, 'USB-C Hub', 79.99, 'US', '2024-03-10', '7890'),
-  (106, 6, 'Webcam HD', 129.99, 'APAC', '2024-03-12', '2345'),
-  (107, 7, 'Laptop Stand', 59.99, 'US', '2024-03-15', '6789'),
-  (108, 8, 'Headphones Pro', 249.99, 'EU', '2024-03-18', '0123'),
-  (109, 1, 'External SSD', 189.99, 'US', '2024-03-20', '4567'),
-  (110, 3, 'Docking Station', 299.99, 'US', '2024-03-22', '8901')
+  (101, 1, 'Laptop Pro', 1299.99, 'US', '2024-03-01', '4123 4567 8912 1234'),
+  (102, 2, 'Wireless Mouse', 49.99, 'EU', '2024-03-02', '5234 6789 0123 5678'),
+  (103, 3, 'Monitor 27in', 399.99, 'US', '2024-03-05', '6345 7890 2345 9012'),
+  (104, 4, 'Keyboard Mech', 149.99, 'EU', '2024-03-07', '7456 8901 3456 3456'),
+  (105, 5, 'USB-C Hub', 79.99, 'US', '2024-03-10', '8567 9012 4567 7890'),
+  (106, 6, 'Webcam HD', 129.99, 'APAC', '2024-03-12', '9678 1234 5678 2345'),
+  (107, 7, 'Laptop Stand', 59.99, 'US', '2024-03-15', '1789 2345 6789 6789'),
+  (108, 8, 'Headphones Pro', 249.99, 'EU', '2024-03-18', '2890 3456 7890 0123'),
+  (109, 1, 'External SSD', 189.99, 'US', '2024-03-20', '3901 4567 8901 4567'),
+  (110, 3, 'Docking Station', 299.99, 'US', '2024-03-22', '4012 5678 9012 8901')
 """)
 
 count = spark.sql(f"SELECT COUNT(*) as cnt FROM {catalog_name}.{schema_name}.orders").collect()[0]['cnt']
@@ -580,8 +580,8 @@ spark.sql(f"ALTER TABLE {table_name} SET TAGS ('sensitivity' = 'high', 'domain' 
 print("✓ Tagged table with sensitivity and domain")
 
 # Tag credit card column
-spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN credit_card_last4 SET TAGS ('pii' = 'credit_card')")
-print("✓ Tagged credit_card_last4 column as PII")
+spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN credit_card_number SET TAGS ('pii' = 'credit_card')")
+print("✓ Tagged credit_card_number column as PII")
 
 spark.sql(f"ALTER TABLE {table_name} ALTER COLUMN region SET TAGS ('geo_region' = 'us')")
 print("✓ Tagged region column with geo_region = US")
@@ -726,7 +726,7 @@ RETURN CASE
   WHEN (SELECT group_name FROM {catalog_name}.{schema_name}.user_group_mapping 
         WHERE user_email = current_user() LIMIT 1) IN ('finance_team', 'policy_owner')
     THEN cc
-  ELSE CONCAT('****', cc)
+  ELSE CONCAT('**** **** ****', ' ', SUBSTRING(REPLACE(cc, ' ', ''), -4, 4))
 END
 """)
 
@@ -1175,7 +1175,7 @@ print("Updated to data_analysts! Now RE-RUN the test query")
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC select * from retail_corp.customer_analytics.customers
+# MAGIC select * from retail_corp.customer_analytics.employees
 
 # COMMAND ----------
 
