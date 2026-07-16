@@ -35,6 +35,8 @@
 # MAGIC ✅ **Fine-grained** - Column masking + row filtering combined  
 # MAGIC
 # MAGIC ![abac_1784180743175.png](./abac_1784180743175.png "abac_1784180743175.png")
+# MAGIC
+# MAGIC ![1b3783e3-4c31-40ae-a305-c6833245bc89_1784191285478.png](./1b3783e3-4c31-40ae-a305-c6833245bc89_1784191285478.png "1b3783e3-4c31-40ae-a305-c6833245bc89_1784191285478.png")
 # MAGIC ---
 # MAGIC
 # MAGIC
