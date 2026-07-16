@@ -26,12 +26,15 @@
 # MAGIC ❌ No row filtering - can't restrict by region  
 # MAGIC ❌ New table? Update 20+ GRANT statements  
 # MAGIC
+# MAGIC ![rbac_1784180760929.png](./rbac_1784180760929.png "rbac_1784180760929.png")
+# MAGIC
 # MAGIC ### **The ABAC Solution:**
 # MAGIC ✅ **Tag once** - Mark columns as 'pii', 'financial', 'regional'  
 # MAGIC ✅ **Policy once** - Create catalog-level rules  
 # MAGIC ✅ **Automatic** - New tables inherit policies instantly  
 # MAGIC ✅ **Fine-grained** - Column masking + row filtering combined  
 # MAGIC
+# MAGIC ![abac_1784180743175.png](./abac_1784180743175.png "abac_1784180743175.png")
 # MAGIC ---
 # MAGIC
 # MAGIC ## 📋 Demo Flow (30 minutes)
@@ -2212,3 +2215,8 @@ spark.sql(f"DROP SCHEMA IF EXISTS {catalog_name}.{schema_name} CASCADE")
 spark.sql(f"DROP CATALOG IF EXISTS {catalog_name} CASCADE")
 
 print("✅ Cleanup complete! All demo resources removed.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ![data_classification_1784180784922.png](./data_classification_1784180784922.png "data_classification_1784180784922.png")
